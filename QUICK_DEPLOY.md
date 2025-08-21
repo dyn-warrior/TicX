@@ -2,15 +2,11 @@
 
 Railway is the fastest way to deploy your TicX app. Here's how:
 
-## Step 1: Push to GitHub
+## Step 1: Push to GitHub ✅ COMPLETED
 ```bash
-# If you haven't already, initialize git and push to GitHub
-git init
-git add .
-git commit -m "TicX ready for deployment"
-git branch -M main
-git remote add origin https://github.com/yourusername/ticx.git
-git push -u origin main
+# ✅ Your code is now successfully on GitHub!
+# Repository: https://github.com/dyn-warrior/TicX
+git remote -v  # Verify your repository
 ```
 
 ## Step 2: Deploy to Railway
