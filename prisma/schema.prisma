@@ -1,0 +1,173 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  username      String   @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  rating        Int      @default(1200) // optional ELO
+  banned        Boolean  @default(false)
+  
+  // Relations
+  wallet        Wallet?
+  sessions      Session[]
+  matches       MatchParticipant[]
+  moves         Move[]
+  walletTransactions WalletTransaction[]
+
+  @@map("users")
+}
+
+model Wallet {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  balance       Int      @default(0)     // integer points, e.g., in paise-like units
+  locked        Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions  WalletTransaction[]
+
+  @@map("wallets")
+}
+
+model WalletTransaction {
+  id            String   @id @default(cuid())
+  userId        String
+  walletId      String
+  type          TransactionType
+  amount        Int  // positive for credit, negative for debit
+  status        TxStatus   @default(SUCCESS)
+  ref           String?    // matchId or admin note
+  createdAt     DateTime   @default(now())
+  
+  // Relations
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet        Wallet     @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@map("wallet_transactions")
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAW
+  ENTRY_HOLD        // move from balance to locked
+  ENTRY_RELEASE     // release back to balance (draw/cancel)
+  WIN_PAYOUT        // +1.5E
+  HOUSE_FEE         // platform revenue booked (mirror only)
+  ADJUSTMENT
+}
+
+enum TxStatus { 
+  PENDING 
+  SUCCESS 
+  FAILED 
+}
+
+model Match {
+  id            String   @id @default(cuid())
+  status        MatchStatus @default(WAITING)
+  entryFinalE   Int      // E = base×leverage, identical for both
+  leverage      Int      // 1..5
+  createdAt     DateTime @default(now())
+  startedAt     DateTime?
+  endedAt       DateTime?
+  board         String   @default("_________") // 9 chars (X/O/_)
+  turn          Symbol   @default(X)
+  winnerId      String?
+  reason        ResultReason?
+  
+  // Relations
+  participants  MatchParticipant[]
+  moves         Move[]
+
+  @@map("matches")
+}
+
+enum MatchStatus { 
+  WAITING 
+  ACTIVE 
+  COMPLETED 
+  CANCELLED 
+}
+
+enum ResultReason { 
+  WIN 
+  LOSS 
+  DRAW 
+  FORFEIT 
+  CANCELLED 
+}
+
+enum Symbol { 
+  X 
+  O 
+}
+
+model MatchParticipant {
+  id            String   @id @default(cuid())
+  matchId       String
+  userId        String
+  symbol        Symbol
+  joinedAt      DateTime @default(now())
+  isWinner      Boolean  @default(false)
+  
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match         Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, userId])
+  @@map("match_participants")
+}
+
+model Move {
+  id          String   @id @default(cuid())
+  matchId     String
+  userId      String
+  index0to8   Int
+  symbol      Symbol
+  moveNo      Int
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("moves")
+}
+
+model PlatformRevenue {
+  id        String   @id @default(cuid())
+  matchId   String   @unique
+  amount    Int      // 0.5E per completed non-draw match
+  createdAt DateTime @default(now())
+
+  @@map("platform_revenue")
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  userId      String
+  sessionToken String  @unique
+  expires     DateTime
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
