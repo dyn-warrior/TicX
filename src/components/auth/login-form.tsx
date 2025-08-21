@@ -94,7 +94,7 @@ export function LoginForm() {
         </Button>
 
         <div className="text-center">
-          <span className="text-white/70 text-sm">Don't have an account? </span>
+          <span className="text-white/70 text-sm">Don&apos;t have an account? </span>
           <Link 
             href="/register" 
             className="text-white font-medium hover:text-white/80 transition-colors text-sm"
