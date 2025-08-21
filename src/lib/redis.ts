@@ -45,11 +45,14 @@ export class MatchmakingQueue {
     
     for (let i = 0; i < items.length; i++) {
       try {
-        const payload = JSON.parse(items[i]);
-        if (payload.userId === userId) {
-          // Remove this specific item
-          await redis.lrem(queueKey, 1, items[i]);
-          return true;
+        const item = items[i];
+        if (typeof item === 'string') {
+          const payload = JSON.parse(item);
+          if (payload.userId === userId) {
+            // Remove this specific item
+            await redis.lrem(queueKey, 1, item);
+            return true;
+          }
         }
       } catch (error) {
         console.error('Error parsing queue item:', error);
@@ -88,10 +91,14 @@ export class MatchmakingQueue {
     if (!result) return null;
 
     try {
-      return {
-        player1: JSON.parse(result[0]),
-        player2: JSON.parse(result[1]),
-      };
+      const [player1, player2] = result;
+      if (typeof player1 === 'string' && typeof player2 === 'string') {
+        return {
+          player1: JSON.parse(player1),
+          player2: JSON.parse(player2),
+        };
+      }
+      return null;
     } catch (error) {
       console.error('Error parsing matched players:', error);
       return null;
@@ -203,7 +210,7 @@ export class SessionManager {
   static async getSession(sessionId: string): Promise<any | null> {
     const key = `session:${sessionId}`;
     const data = await redis.get(key);
-    return data ? JSON.parse(data) : null;
+    return data && typeof data === 'string' ? JSON.parse(data) : null;
   }
 
   /**
